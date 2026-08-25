@@ -1,0 +1,33 @@
+.env
+.env.local
+.env.*
+
+# === BASES DE DONNÉES ===
+*.db
+*.sqlite
+*.sqlite3
+data/
+# (Si vous avez mis la DB dans un dossier spécifique)
+
+# === STREAMLIT ===
+# Ne jamais commiter les secrets Streamlit
+.streamlit/secrets.toml
+
+# === PYTHON ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+env/
+.venv/
+
+# === LOGS & CACHE ===
+logs/
+*.log
+.cache/
+
+# === IDE ===
+.vscode/
+.idea/
+*.swp
