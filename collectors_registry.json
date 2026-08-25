@@ -2,35 +2,24 @@
   "collectors": [
     {
       "id": "duckduckgo_html",
-      "name": "DuckDuckGo (HTML Scraping)",
+      "name": "DuckDuckGo (HTML)",
       "category": "search_engine",
       "module": "collectors.search_engines.duckduckgo",
       "class": "DuckDuckGoCollector",
       "enabled": true,
-      "rate_limit": {"requests_per_minute": 30, "backoff_multiplier": 2.0},
+      "rate_limit": {"requests_per_minute": 20},
       "requires_api_key": false
     },
     {
-      "id": "shodan_passive",
-      "name": "Shodan",
-      "category": "surface_attack",
-      "module": "collectors.surface_attack.shodan",
-      "class": "ShodanCollector",
-      "enabled": false,
-      "rate_limit": {"requests_per_minute": 10},
-      "requires_api_key": true,
-      "env_var": "SHODAN_API_KEY"
-    },
-    {
-      "id": "hibp_breach",
-      "name": "Have I Been Pwned",
-      "category": "breach_intel",
-      "module": "collectors.breach_intel.hibp",
-      "class": "HIBPCollector",
-      "enabled": false,
-      "rate_limit": {"requests_per_minute": 5},
-      "requires_api_key": true,
-      "env_var": "HIBP_API_KEY"
+      "id": "searxng_public",
+      "name": "SearXNG (Public Instance)",
+      "category": "search_engine",
+      "module": "collectors.search_engines.searxng",
+      "class": "SearXNGCollector",
+      "enabled": true,
+      "rate_limit": {"requests_per_minute": 30},
+      "requires_api_key": false,
+      "instance_url": "https://searx.be"
     }
   ]
 }
