@@ -12,7 +12,7 @@
     },
     {
       "id": "searxng_public",
-      "name": "SearXNG (Public Instance)",
+      "name": "SearXNG (Public)",
       "category": "search_engine",
       "module": "collectors.search_engines.searxng",
       "class": "SearXNGCollector",
@@ -20,6 +20,27 @@
       "rate_limit": {"requests_per_minute": 30},
       "requires_api_key": false,
       "instance_url": "https://searx.be"
+    },
+    {
+      "id": "crtsh_passive",
+      "name": "crt.sh (Certificate Transparency)",
+      "category": "surface_attack",
+      "module": "collectors.surface_attack.crtsh",
+      "class": "CrtShCollector",
+      "enabled": true,
+      "rate_limit": {"requests_per_minute": 10},
+      "requires_api_key": false
+    },
+    {
+      "id": "github_code",
+      "name": "GitHub Code Search",
+      "category": "code_source",
+      "module": "collectors.code_source.github",
+      "class": "GitHubCollector",
+      "enabled": false,
+      "rate_limit": {"requests_per_minute": 10},
+      "requires_api_key": true,
+      "env_var": "GITHUB_TOKEN"
     }
   ]
 }

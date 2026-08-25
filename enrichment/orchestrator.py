@@ -12,7 +12,6 @@ class EnrichmentOrchestrator:
         self.db_path = db_path
 
     async def _get_cached_enrichment(self, ioc_value: str) -> Optional[Dict[str, Any]]:
-        """Récupère l'enrichissement depuis le cache SQLite s'il a moins de 7 jours."""
         async with aiosqlite.connect(self.db_path) as db:
             cursor = await db.execute(
                 "SELECT enrichment_data, last_seen FROM iocs WHERE value = ?", 
@@ -21,13 +20,13 @@ class EnrichmentOrchestrator:
             row = await cursor.fetchone()
             if row:
                 data, last_seen_str = row
-                last_seen = datetime.fromisoformat(last_seen_str)
-                if datetime.utcnow() - last_seen < timedelta(days=7):
-                    return json.loads(data) if data else {}
+                if data:
+                    last_seen = datetime.fromisoformat(last_seen_str)
+                    if datetime.utcnow() - last_seen < timedelta(days=7):
+                        return json.loads(data)
         return None
 
     async def _cache_enrichment(self, ioc_value: str, ioc_type: str, data: Dict[str, Any]):
-        """Met à jour ou insère l'IOC avec ses données d'enrichissement."""
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute("""
                 INSERT INTO iocs (id, value, type, first_seen, last_seen, enrichment_data)
@@ -39,7 +38,6 @@ class EnrichmentOrchestrator:
             await db.commit()
 
     async def enrich(self, ioc_value: str, ioc_type: str, api_keys: Dict[str, str]) -> Dict[str, Any]:
-        """Point d'entrée principal pour l'enrichissement d'un IOC."""
         cached = await self._get_cached_enrichment(ioc_value)
         if cached:
             return {"source": "cache", "data": cached}
@@ -47,19 +45,18 @@ class EnrichmentOrchestrator:
         enriched_data = {}
         
         try:
-            if ioc_type in ["IPV4"]:
+            if ioc_type == "IPV4":
                 if api_keys.get("ABUSEIPDB"):
                     enriched_data["abuseipdb"] = await enrich_with_abuseipdb(ioc_value, api_keys["ABUSEIPDB"])
                 if api_keys.get("VIRUSTOTAL"):
                     enriched_data["virustotal"] = await enrich_with_vt(ioc_value, "ip", api_keys["VIRUSTOTAL"])
             
-            elif ioc_type in ["DOMAIN"]:
+            elif ioc_type == "DOMAIN":
                 enriched_data["whois"] = await enrich_with_whois(ioc_value)
                 if api_keys.get("VIRUSTOTAL"):
                     enriched_data["virustotal"] = await enrich_with_vt(ioc_value, "domain", api_keys["VIRUSTOTAL"])
             
-            elif ioc_type in ["EMAIL"]:
-                # Note: HIBP nécessite une clé API payante/autorisée pour l'API v3
+            elif ioc_type == "EMAIL":
                 enriched_data["mx_record"] = await self._check_mx(ioc_value)
 
             await self._cache_enrichment(ioc_value, ioc_type, enriched_data)

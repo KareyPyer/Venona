@@ -2,31 +2,42 @@ import aiohttp
 import os
 from collectors.base import BaseCollector
 from core.models import SearchResult
+import logging
+
+logger = logging.getLogger("dorker.github")
 
 class GitHubCollector(BaseCollector):
     async def collect(self, query: str, session: aiohttp.ClientSession) -> list[SearchResult]:
+        """Recherche de code via l'API GitHub."""
         token = os.getenv("GITHUB_TOKEN")
-        headers = {"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"} if token else {}
-        url = f"https://api.github.com/search/code?q={query}&per_page=10"
+        headers = {"Accept": "application/vnd.github.v3+json"}
+        if token:
+            headers["Authorization"] = f"token {token}"
         
-        await self._respect_rate_limit() # Utilise le RateLimiter de base.py
+        url = "https://api.github.com/search/code"
+        params = {"q": query, "per_page": 10}
         
         try:
-            async with session.get(url, headers=headers) as response:
+            async with session.get(url, headers=headers, params=params, timeout=10) as response:
                 if response.status == 403:
-                    raise Exception("Quota API GitHub dépassé ou token manquant.")
-                response.raise_for_status()
-                data = await response.json()
+                    logger.warning("Quota API GitHub dépassé ou token manquant")
+                    return []
+                if response.status != 200:
+                    return []
                 
+                data = await response.json()
                 results = []
+                
                 for item in data.get("items", []):
+                    repo = item.get("repository", {})
                     results.append(SearchResult(
-                        title=item.get("name"),
-                        url=item.get("html_url"),
-                        snippet=f"Repo: {item.get('repository', {}).get('full_name')}",
-                        source="GitHub API"
+                        title=item.get("name", "No Title"),
+                        url=item.get("html_url", ""),
+                        snippet=f"Repo: {repo.get('full_name', 'N/A')} | Path: {item.get('path', 'N/A')}",
+                        source="GitHub"
                     ))
+                
                 return results
         except Exception as e:
-            print(f"[GitHub Collector Error] {e}")
+            logger.error(f"Erreur GitHub: {e}")
             return []
