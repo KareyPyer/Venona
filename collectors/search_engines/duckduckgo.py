@@ -1,0 +1,1 @@
+# TODO: DuckDuckGo HTML scraper\nfrom collectors.base import BaseCollector\n

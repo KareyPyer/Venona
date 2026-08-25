@@ -1,0 +1,36 @@
+{
+  "collectors": [
+    {
+      "id": "duckduckgo_html",
+      "name": "DuckDuckGo (HTML Scraping)",
+      "category": "search_engine",
+      "module": "collectors.search_engines.duckduckgo",
+      "class": "DuckDuckGoCollector",
+      "enabled": true,
+      "rate_limit": {"requests_per_minute": 30, "backoff_multiplier": 2.0},
+      "requires_api_key": false
+    },
+    {
+      "id": "shodan_passive",
+      "name": "Shodan",
+      "category": "surface_attack",
+      "module": "collectors.surface_attack.shodan",
+      "class": "ShodanCollector",
+      "enabled": false,
+      "rate_limit": {"requests_per_minute": 10},
+      "requires_api_key": true,
+      "env_var": "SHODAN_API_KEY"
+    },
+    {
+      "id": "hibp_breach",
+      "name": "Have I Been Pwned",
+      "category": "breach_intel",
+      "module": "collectors.breach_intel.hibp",
+      "class": "HIBPCollector",
+      "enabled": false,
+      "rate_limit": {"requests_per_minute": 5},
+      "requires_api_key": true,
+      "env_var": "HIBP_API_KEY"
+    }
+  ]
+}

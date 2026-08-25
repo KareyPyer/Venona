@@ -1,0 +1,29 @@
+Vous pouvez maintenant lancer l'application : streamlit run app.py
+aiohttp>=3.9.0
+aiosqlite>=0.19.0
+nest-asyncio>=1.5.8 # Pour gérer l'async dans Streamlit
+pydantic>=2.5.0
+streamlit>=1.30.0
+============================================================
+DORKER PRO v6.0 - Initialisation de la Base de Données
+Usage légal : Uniquement pour des investigations autorisées.
+[*] Initialisation de la base de données : /home/user/StreamDrkR/osint_searches.db
+[*] Insertion des données de démonstration...
+[+] Données de démonstration insérées.
+[+] Schéma de base de données et index créés avec succès.
+[+] Vérification d'intégrité SQLite : OK
+[SUCCESS] Initialisation terminée avec succès !
+beautifulsoup4>=4.12.0
+dnspython>=2.4.0
+fake-useragent>=1.4.0
+networkx>=3.2
+pandas>=2.1.0
+phonenumbers>=8.13.0
+plotly>=5.18.0
+python-dotenv>=1.0.0
+pyvis>=0.3.2
+reportlab>=4.0.0
+reportlab>=4.0.0 # Pour les exports PDF
+requests>=2.31.0
+stix2>=3.0.1
+tldextract>=3.4.0
