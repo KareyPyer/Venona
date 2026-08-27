@@ -19,7 +19,7 @@
       "enabled": true,
       "rate_limit": {"requests_per_minute": 30},
       "requires_api_key": false,
-      "instance_url": "https://searx.be"
+      "instance_url": "https://searx.tiekoetter.com"
     },
     {
       "id": "crtsh_passive",
@@ -30,17 +30,6 @@
       "enabled": true,
       "rate_limit": {"requests_per_minute": 10},
       "requires_api_key": false
-    },
-    {
-      "id": "github_code",
-      "name": "GitHub Code Search",
-      "category": "code_source",
-      "module": "collectors.code_source.github",
-      "class": "GitHubCollector",
-      "enabled": false,
-      "rate_limit": {"requests_per_minute": 10},
-      "requires_api_key": true,
-      "env_var": "GITHUB_TOKEN"
     }
   ]
 }

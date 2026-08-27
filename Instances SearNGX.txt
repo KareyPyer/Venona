@@ -1,0 +1,5 @@
+Changer manuellement d'instance dans `collectors_registry.json`
+Remplacez `"instance_url": "https://searx.tiekoetter.com"` par l'une de ces alternatives testées :
+- `"https://search.sapti.me"`
+- `"https://searx.nixnet.services"`
+- `"https://searx.fmac.xyz"
