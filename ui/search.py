@@ -6,6 +6,7 @@ import os
 from datetime import datetime
 
 from collectors.manager import CollectorManager
+from collectors.content_scraper import ContentScraper
 from core.ioc_extractor import IOCExtractor
 from core.scoring import calculate_osint_score
 from storage.db_manager import DatabaseManager
@@ -18,13 +19,15 @@ async def run_osint_pipeline(
     selected_collectors: list, 
     case_id: str, 
     enrich: bool = False,
-    translated_queries: dict = None
+    translated_queries: dict = None,
+    scrape_content: bool = False,
+    max_pages_to_scrape: int = 10
 ):
-    """Pipeline complet avec requêtes traduites par moteur."""
+    """Pipeline complet avec scraping optionnel du contenu des pages."""
     manager = CollectorManager()
     db = DatabaseManager()
     
-    # 1. Collecte avec requêtes traduites
+    # 1. Collecte des résultats de recherche
     async with aiohttp.ClientSession() as session:
         results = await manager.run_all(
             query, 
@@ -33,11 +36,22 @@ async def run_osint_pipeline(
             use_translated_queries=translated_queries
         )
     
-    # 2. Extraction IOC
-    raw_text = " ".join([f"{r.title} {r.snippet} {r.url}" for r in results])
-    iocs = IOCExtractor.extract(raw_text)
+    # 2. Scraping optionnel du contenu des pages
+    scraped_contents = []
+    if scrape_content and results:
+        scraper = ContentScraper(max_concurrent=5)
+        urls_to_scrape = [r.url for r in results if r.url][:max_pages_to_scrape]
+        
+        scraped_contents = await scraper.scrape_multiple(
+            session=None, 
+            urls=urls_to_scrape,
+            max_pages=max_pages_to_scrape
+        )
     
-    # 3. Enrichissement (optionnel)
+    # 3. Extraction IOC combinée (snippets + contenus)
+    iocs, extraction_stats = IOCExtractor.extract_from_results(results, scraped_contents)
+    
+    # 4. Enrichissement (optionnel)
     if enrich and iocs:
         orchestrator = EnrichmentOrchestrator()
         api_keys = {
@@ -45,33 +59,30 @@ async def run_osint_pipeline(
             "ABUSEIPDB": os.getenv("ABUSEIPDB_API_KEY")
         }
         
-        with st.spinner(f"Enrichissement de {len(iocs)} IOC..."):
-            for ioc in iocs:
-                enrichment_result = await orchestrator.enrich(ioc.value, ioc.type, api_keys)
-                ioc.enrichment = enrichment_result.get("data", {})
+        for ioc in iocs:
+            enrichment_result = await orchestrator.enrich(ioc.value, ioc.type, api_keys)
+            ioc.enrichment = enrichment_result.get("data", {})
     
-    # 4. Scoring
+    # 5. Scoring
     score = calculate_osint_score(iocs)
     
-    # 5. Stockage
+    # 6. Stockage
     raw_json = json.dumps([r.model_dump() for r in results], default=str)
     search_id = await db.log_search(case_id, query, ",".join(selected_collectors), raw_json)
     
     for ioc in iocs:
         await db.save_ioc(ioc, ioc.enrichment)
     
-    return results, iocs, score, search_id
+    return results, iocs, score, search_id, extraction_stats, scraped_contents
 
 def render_search_interface():
     st.header("🔍 Recherche OSINT Multi-Sources")
     
-    # === Zone de requête ===
     col1, col2 = st.columns([3, 1])
     with col1:
         query = st.text_input(
             "Requête (Google Dorks supportés)", 
-            placeholder='ex: "EU DisinfoLab" OR "EUvsDisinfo" site:*.com OR site:*.ru',
-            help="Utilisez la syntaxe Google Dorks. Les requêtes seront automatiquement adaptées à chaque moteur."
+            placeholder='ex: "Disttrack" wiper "Middle East"',
         )
     with col2:
         manager = CollectorManager()
@@ -82,72 +93,59 @@ def render_search_interface():
             default=available_collectors[:2] if len(available_collectors) >= 2 else available_collectors
         )
     
-    # === Recommandation de moteurs ===
-    if query:
-        is_complex = QuerySanitizer.is_complex_query(query)
-        
-        if is_complex:
-            st.warning(
-                "⚠️ **Requête complexe détectée** (parenthèses, OR/AND, site:, etc.)\n\n"
-                "**Recommandation** : Utilisez uniquement **SearXNG** pour de meilleurs résultats.\n"
-                "DuckDuckGo ne supporte pas ces opérateurs et retournera peu ou pas de résultats."
-            )
-            
-            # Suggestion automatique
-            if "duckduckgo_html" in selected_collectors and len(selected_collectors) > 1:
-                if st.button("🎯 Utiliser uniquement SearXNG (recommandé)", type="secondary"):
-                    selected_collectors = ["searxng_public"]
-                    st.rerun()
+    # Recommandation pour requêtes complexes
+    if query and QuerySanitizer.is_complex_query(query):
+        st.warning(
+            "⚠️ **Requête complexe** détectée.\n\n"
+            "**Recommandation** : Privilégiez SearXNG local (Docker) pour les opérateurs avancés."
+        )
     
-    # === Affichage des traductions en temps réel ===
+    # Aperçu des traductions
     if query and selected_collectors:
         with st.expander("🔧 Aperçu des requêtes traduites par moteur", expanded=False):
-            st.caption("Dorker Pro adapte automatiquement votre requête à la syntaxe de chaque moteur.")
-            
             translations = DorkTranslator.translate_for_multiple_engines(query, selected_collectors)
-            
             for engine_id, translation in translations.items():
                 st.markdown(f"**{engine_id}**")
-                
-                col_orig, col_trans = st.columns(2)
-                with col_orig:
+                col_a, col_b = st.columns(2)
+                with col_a:
                     st.code(translation.original, language="text")
-                    st.caption("Requête originale")
-                with col_trans:
+                with col_b:
                     st.code(translation.translated, language="text")
-                    st.caption("Requête traduite/nettoyée")
-                
-                if translation.was_sanitized:
-                    st.info(f"🧹 Requête nettoyée pour {engine_id}")
-                
                 if translation.warnings:
-                    for warning in translation.warnings:
-                        st.warning(warning)
-                
-                if translation.lost_operators:
-                    st.info(f"Opérateurs retirés : {', '.join(translation.lost_operators)}")
-                
+                    for w in translation.warnings:
+                        st.warning(w)
                 st.divider()
     
-    # === Options avancées ===
-    with st.expander("⚙️ Options avancées", expanded=False):
-        enrich = st.checkbox(
-            "🔬 Activer l'enrichissement automatique (VT, AbuseIPDB, WHOIS)", 
-            value=False,
-            help="Consomme des quotas API. À utiliser uniquement pour les investigations ciblées."
-        )
+    # Options avancées
+    with st.expander("⚙️ Options avancées", expanded=True):
+        col_a, col_b = st.columns(2)
         
-        st.markdown("#### 💡 Syntaxe supportée par moteur")
+        with col_a:
+            enrich = st.checkbox(
+                "🔬 Enrichissement automatique (VT, AbuseIPDB)", 
+                value=False,
+                help="Consomme des quotas API"
+            )
         
-        if selected_collectors:
-            cols = st.columns(len(selected_collectors))
-            for idx, engine_id in enumerate(selected_collectors):
-                with cols[idx]:
-                    st.markdown(f"**{engine_id}**")
-                    syntax = DorkTranslator.suggest_syntax(engine_id)
-                    st.code(syntax, language="text")
+        with col_b:
+            scrape_content = st.checkbox(
+                "📄 Scanner le contenu des pages", 
+                value=True,
+                help="Récupère le texte des pages pour extraire les IOC mentionnés (hashes, domaines C2, etc.)"
+            )
+        
+        if scrape_content:
+            max_pages = st.slider(
+                "Nombre max de pages à scanner",
+                min_value=1,
+                max_value=20,
+                value=10,
+                help="Plus il y a de pages, plus l'extraction est complète mais plus longue"
+            )
+        else:
+            max_pages = 0
     
-    # === Bouton de lancement ===
+    # Bouton de lancement
     case_id = st.session_state.get('active_case_id', 'demo-case-id')
     
     if st.button("🚀 Lancer l'Investigation", type="primary", use_container_width=True):
@@ -156,38 +154,37 @@ def render_search_interface():
         elif not selected_collectors:
             st.warning("Sélectionnez au moins un collecteur.")
         else:
-            # Pré-calcul des traductions
             translations = DorkTranslator.translate_for_multiple_engines(query, selected_collectors)
             translated_queries = {
-                engine_id: translation.translated
-                for engine_id, translation in translations.items()
+                engine_id: t.translated for engine_id, t in translations.items()
             }
-            
-            # Affichage des avertissements globaux
-            all_warnings = []
-            for translation in translations.values():
-                all_warnings.extend(translation.warnings)
-            
-            if all_warnings:
-                with st.expander("⚠️ Avertissements sur la traduction des requêtes", expanded=True):
-                    for warning in set(all_warnings):
-                        st.warning(warning)
             
             with st.spinner("Investigation en cours..."):
                 try:
-                    results, iocs, score, search_id = asyncio.run(
+                    results, iocs, score, search_id, extraction_stats, scraped_contents = asyncio.run(
                         run_osint_pipeline(
-                            query, 
-                            selected_collectors, 
-                            case_id, 
-                            enrich,
-                            translated_queries
+                            query, selected_collectors, case_id, enrich,
+                            translated_queries, scrape_content, max_pages
                         )
                     )
                     
-                    st.success(f"✅ Terminé. Score: **{score}** | IOC: {len(iocs)} | ID: `{search_id[:8]}...`")
+                    st.success(f"✅ Terminé. Score: **{score}** | IOC uniques: {len(iocs)}")
                     
-                    tab1, tab2, tab3, tab4 = st.tabs(["📄 Résultats", "🎯 IOC", "📊 Analyse", "🔧 Détails techniques"])
+                    # Statistiques d'extraction
+                    with st.expander("📊 Statistiques d'extraction", expanded=True):
+                        col_a, col_b, col_c, col_d = st.columns(4)
+                        col_a.metric("Depuis snippets", extraction_stats.get('from_snippets', 0))
+                        col_b.metric("Depuis contenu réel", extraction_stats.get('from_scraped_content', 0))
+                        col_c.metric("🚫 Domaines légitimes filtrés", extraction_stats.get('filtered_legitimate', 0))
+                        col_d.metric("🚫 Faux positifs filtrés", extraction_stats.get('filtered_false_positive', 0))
+                    
+                    # Onglets de résultats
+                    tab1, tab2, tab3, tab4 = st.tabs([
+                        "📄 Résultats bruts", 
+                        "🎯 IOC extraits", 
+                        "📊 Analyse", 
+                        "🔧 Détails techniques"
+                    ])
                     
                     with tab1:
                         if not results:
@@ -195,40 +192,42 @@ def render_search_interface():
                         for r in results[:20]:
                             st.markdown(f"**[{r.source}] {r.title}**")
                             st.caption(r.url)
-                            st.write(r.snippet)
+                            st.write(r.snippet[:300] + "..." if len(r.snippet) > 300 else r.snippet)
                             st.divider()
                     
                     with tab2:
                         if iocs:
-                            st.dataframe([{
-                                "Type": i.type,
-                                "Value": i.value,
-                                "Confiance": f"{i.confidence*100:.0f}%",
-                                "Enrichi": "✅" if i.enrichment else "❌"
-                            } for i in iocs])
+                            # Regrouper par type
+                            iocs_by_type = {}
+                            for ioc in iocs:
+                                iocs_by_type.setdefault(ioc.type, []).append(ioc)
+                            
+                            for ioc_type, type_iocs in iocs_by_type.items():
+                                with st.expander(f"🎯 {ioc_type} ({len(type_iocs)})", expanded=True):
+                                    for ioc in type_iocs[:50]:
+                                        col_a, col_b = st.columns([4, 1])
+                                        with col_a:
+                                            st.code(ioc.value, language="text")
+                                        with col_b:
+                                            st.caption(f"Confiance: {ioc.confidence*100:.0f}%")
                         else:
                             st.info("Aucun IOC extrait.")
+                            st.caption("💡 Activez l'option 'Scanner le contenu des pages' pour extraire les IOC mentionnés dans les articles.")
                     
                     with tab3:
                         st.metric("Score OSINT", score)
-                        st.write(f"**Résumé** : {len(results)} résultats, {len(iocs)} IOC.")
-                        
-                        # Statistiques par source
-                        source_counts = {}
-                        for r in results:
-                            source_counts[r.source] = source_counts.get(r.source, 0) + 1
-                        
-                        if source_counts:
-                            st.markdown("**Résultats par source :**")
-                            cols = st.columns(len(source_counts))
-                            for idx, (source, count) in enumerate(source_counts.items()):
-                                cols[idx].metric(source, count)
+                        st.write(f"**Résumé** : {len(results)} résultats, {len(iocs)} IOC uniques.")
                     
                     with tab4:
-                        st.markdown("#### Requêtes effectivement envoyées")
+                        st.markdown("#### Requêtes envoyées")
                         for engine_id, translated in translated_queries.items():
                             st.markdown(f"**{engine_id}**")
                             st.code(translated, language="text")
+                        
+                        if scraped_contents:
+                            st.markdown(f"#### Pages scrapées ({len(scraped_contents)})")
+                            for content in scraped_contents[:10]:
+                                st.markdown(f"- **{content.get('title', 'Sans titre')}** : {content.get('url', '')}")
                         
                 except Exception as e:
                     st.error(f"Erreur : {e}")
