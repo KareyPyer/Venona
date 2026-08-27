@@ -22,6 +22,17 @@
       "instance_url": "https://searx.tiekoetter.com"
     },
     {
+      "id": "github_code",
+      "name": "GitHub Code Search",
+      "category": "code_source",
+      "module": "collectors.code_source.github",
+      "class": "GitHubCollector",
+      "enabled": true,
+      "rate_limit": {"requests_per_minute": 10},
+      "requires_api_key": true,
+      "env_var": "GITHUB_TOKEN"
+    },
+    {
       "id": "crtsh_passive",
       "name": "crt.sh (Certificate Transparency)",
       "category": "surface_attack",
@@ -30,6 +41,91 @@
       "enabled": true,
       "rate_limit": {"requests_per_minute": 10},
       "requires_api_key": false
+    },
+    {
+      "id": "alienvault_otx",
+      "name": "AlienVault OTX",
+      "category": "threat_intel",
+      "module": "collectors.threat_intel.alienvault_otx",
+      "class": "AlienVaultOTXCollector",
+      "enabled": true,
+      "rate_limit": {"requests_per_minute": 60},
+      "requires_api_key": false
+    },
+    {
+      "id": "greynoise",
+      "name": "GreyNoise",
+      "category": "threat_intel",
+      "module": "collectors.threat_intel.greynoise",
+      "class": "GreyNoiseCollector",
+      "enabled": true,
+      "rate_limit": {"requests_per_minute": 60},
+      "requires_api_key": true,
+      "env_var": "GRY_API_KEY"
+    },
+    {
+      "id": "malwarebazaar",
+      "name": "MalwareBazaar",
+      "category": "threat_intel",
+      "module": "collectors.threat_intel.malwarebazaar",
+      "class": "MalwareBazaarCollector",
+      "enabled": true,
+      "rate_limit": {"requests_per_minute": 15},
+      "requires_api_key": false
+    },
+    {
+      "id": "urlscan",
+      "name": "URLScan.io",
+      "category": "threat_intel",
+      "module": "collectors.threat_intel.urlscan",
+      "class": "URLScanCollector",
+      "enabled": true,
+      "rate_limit": {"requests_per_minute": 30},
+      "requires_api_key": true,
+      "env_var": "URLSCAN_API_KEY"
+    },
+    {
+      "id": "hibp",
+      "name": "Have I Been Pwned",
+      "category": "breach_intel",
+      "module": "collectors.breach_intel.hibp",
+      "class": "HIBPCollector",
+      "enabled": true,
+      "rate_limit": {"requests_per_minute": 6},
+      "requires_api_key": true,
+      "env_var": "HIBP_API_KEY"
+    },
+    {
+      "id": "rss_feeds",
+      "name": "RSS OSINT Feeds",
+      "category": "passive_feed",
+      "module": "collectors.passive_feed.rss",
+      "class": "RSSCollector",
+      "enabled": true,
+      "rate_limit": {"requests_per_minute": 30},
+      "requires_api_key": false
+    },
+    {
+      "id": "shodan",
+      "name": "Shodan",
+      "category": "surface_attack",
+      "module": "collectors.surface_attack.shodan",
+      "class": "ShodanCollector",
+      "enabled": true,
+      "rate_limit": {"requests_per_minute": 10},
+      "requires_api_key": true,
+      "env_var": "SHODAN_API_KEY"
+    },
+    {
+      "id": "censys",
+      "name": "Censys",
+      "category": "surface_attack",
+      "module": "collectors.surface_attack.censys",
+      "class": "CensysCollector",
+      "enabled": true,
+      "rate_limit": {"requests_per_minute": 10},
+      "requires_api_key": true,
+      "env_var": "CENSYS_API_ID"
     }
   ]
 }

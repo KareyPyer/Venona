@@ -1,7 +1,9 @@
 import aiohttp
+import asyncio
 import logging
 
 logger = logging.getLogger("dorker.alerting")
+
 
 class AlertDispatcher:
     def __init__(self, config: dict):
@@ -17,7 +19,7 @@ class AlertDispatcher:
             tasks.append(self._send_slack(title, details, color))
         if self.config.get("TELEGRAM_BOT_TOKEN") and self.config.get("TELEGRAM_CHAT_ID"):
             tasks.append(self._send_telegram(title, details, severity))
-        
+
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -39,6 +41,6 @@ class AlertDispatcher:
         emoji = "🔴" if severity in ["HIGH", "CRITICAL"] else "🟡"
         text = f"{emoji} *{title}*\n\n{details}"
         url = f"https://api.telegram.org/bot{token}/sendMessage"
-        
+
         async with aiohttp.ClientSession() as session:
             await session.post(url, json={"chat_id": chat_id, "text": text, "parse_mode": "Markdown"})
