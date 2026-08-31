@@ -54,7 +54,36 @@ class DorkTemplates:
             '"{ip}" vulnerability OR exploit',
             'site:shodan.io "{ip}"',
             'site:greynoise.io "{ip}"',
-        ]
+        ],
+        "topic_recall": [
+            # {topic}   : le thème en une expression, ex. "aerospace technology"
+            # {keywords}: alternation pré-construite des synonymes, ex.
+            #             '"aerospace technology" OR "aeronautics" OR "space propulsion"'
+            '{keywords} filetype:pdf',
+            'site:*.gov {topic} ("export control" OR "technical report" OR "whitepaper")',
+            'site:*.mil {topic}',
+            'intitle:"{topic}" filetype:pdf (thesis OR whitepaper OR "technical report")',
+            '{keywords} site:arxiv.org',
+            '"{topic}" (supplier OR manufacturer OR directory OR listing)',
+        ],
+        "exposed_vcs_global": [
+            # Aucune variable requise — recherche générique de VCS exposés,
+            # à router en priorité vers github_code et leakix.
+            '+plugin:GitConfigHttpPlugin',
+            '+plugin:DotGitOpenPlugin',
+            'filename:.git-credentials',
+            'filename:.netrc password',
+            'extension:git-config "[remote \"origin\"]"',
+            'intitle:"index of" "/.git"',
+        ],
+        "exposed_vcs_scoped": [
+            # {target}: domaine, organisation GitHub ou nom d'hôte à cibler
+            'site:{target} filename:.git-credentials',
+            'site:{target} inurl:"/.git/config"',
+            '+plugin:GitConfigHttpPlugin +host:{target}',
+            'org:{target} filename:.env DB_PASSWORD',
+            'intitle:"index of" "/svn/" {target}',
+        ],
     }
 
     @classmethod
@@ -88,5 +117,8 @@ class DorkTemplates:
             "vulnerability": "Recherche d'informations sur une CVE",
             "domain_recon": "Reconnaissance passive d'un domaine",
             "ip_recon": "Reconnaissance passive d'une adresse IP",
+            "topic_recall": "Collecte large d'URLs sur un thème (synonymes + filetype/site)",
+            "exposed_vcs_global": "Recherche générique de dépôts/VCS exposés (.git, .svn, secrets)",
+            "exposed_vcs_scoped": "Recherche de VCS exposés ciblée sur un domaine/organisation",
         }
         return descriptions.get(template_name, "Template OSINT générique")

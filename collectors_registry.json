@@ -22,6 +22,38 @@
       "instance_url": "https://searx.tiekoetter.com"
     },
     {
+      "id": "brave_search",
+      "name": "Brave Search",
+      "category": "search_engine",
+      "module": "collectors.search_engines.brave",
+      "class": "BraveSearchCollector",
+      "enabled": true,
+      "rate_limit": {"requests_per_minute": 15},
+      "requires_api_key": true,
+      "env_var": "BRAVE_API_KEY"
+    },
+    {
+      "id": "qwant",
+      "name": "Qwant",
+      "category": "search_engine",
+      "module": "collectors.search_engines.qwant",
+      "class": "QwantCollector",
+      "enabled": true,
+      "rate_limit": {"requests_per_minute": 20},
+      "requires_api_key": false
+    },
+    {
+      "id": "mojeek",
+      "name": "Mojeek",
+      "category": "search_engine",
+      "module": "collectors.search_engines.mojeek",
+      "class": "MojeekCollector",
+      "enabled": true,
+      "rate_limit": {"requests_per_minute": 20},
+      "requires_api_key": true,
+      "env_var": "MOJEEK_API_KEY"
+    },
+    {
       "id": "github_code",
       "name": "GitHub Code Search",
       "category": "code_source",
@@ -85,6 +117,28 @@
       "env_var": "URLSCAN_API_KEY"
     },
     {
+      "id": "threatfox",
+      "name": "ThreatFox (abuse.ch)",
+      "category": "threat_intel",
+      "module": "collectors.threat_intel.threatfox",
+      "class": "ThreatFoxCollector",
+      "enabled": true,
+      "rate_limit": {"requests_per_minute": 60},
+      "requires_api_key": true,
+      "env_var": "THREATFOX_API_KEY"
+    },
+    {
+      "id": "urlhaus",
+      "name": "URLhaus (abuse.ch)",
+      "category": "threat_intel",
+      "module": "collectors.threat_intel.urlhaus",
+      "class": "URLhausCollector",
+      "enabled": true,
+      "rate_limit": {"requests_per_minute": 60},
+      "requires_api_key": true,
+      "env_var": "URLHAUS_API_KEY"
+    },
+    {
       "id": "hibp",
       "name": "Have I Been Pwned",
       "category": "breach_intel",
@@ -94,6 +148,17 @@
       "rate_limit": {"requests_per_minute": 6},
       "requires_api_key": true,
       "env_var": "HIBP_API_KEY"
+    },
+    {
+      "id": "leakix",
+      "name": "LeakIX",
+      "category": "breach_intel",
+      "module": "collectors.breach_intel.leakix",
+      "class": "LeakIXCollector",
+      "enabled": true,
+      "rate_limit": {"requests_per_minute": 30},
+      "requires_api_key": true,
+      "env_var": "LEAKIX_API_KEY"
     },
     {
       "id": "rss_feeds",
